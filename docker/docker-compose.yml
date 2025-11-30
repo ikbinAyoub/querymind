@@ -1,0 +1,81 @@
+# QueryMind Docker Compose - Production Ready
+version: '3.8'
+
+services:
+  # QueryMind Application
+  querymind:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: querymind-app
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=openai
+      - OPENAI_MODEL=gpt-4o-mini
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=info
+    volumes:
+      - ../frontend:/app/frontend:ro
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    networks:
+      - querymind-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: querymind-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - querymind-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL Demo Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: querymind-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: querymind
+      POSTGRES_PASSWORD: querymind123
+      POSTGRES_DB: demo_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-demo-db.sql:/docker-entrypoint-initdb.d/init-demo-db.sql:ro
+    restart: unless-stopped
+    networks:
+      - querymind-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U querymind -d demo_db"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  querymind-net:
+    driver: bridge

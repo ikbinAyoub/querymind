@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueryMind - SQL-RAG Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    colors: {
+                        'primary': {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e'
+                        },
+                        'dark': {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass-effect {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .animate-slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .typing-animation::after {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #0ea5e9;
+            display: inline-block;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .table-hover tr:hover {
+            background-color: rgba(14, 165, 233, 0.05);
+            transform: scale(1.001);
+            transition: all 0.2s ease;
+        }
+        
+        .dark .table-hover tr:hover {
+            background-color: rgba(14, 165, 233, 0.1);
+        }
+        
+        .status-indicator {
+            position: relative;
+        }
+        
+        .status-indicator::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-connected::before {
+            background: rgba(34, 197, 94, 0.3);
+        }
+        
+        .status-disconnected::before {
+            background: rgba(239, 68, 68, 0.3);
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+            70% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(148, 163, 184, 0.1);
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(14, 165, 233, 0.3);
+            border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(14, 165, 233, 0.5);
+        }
+    </style>
+</head>
+<body class="h-full bg-gray-50 dark:bg-dark-900 transition-colors duration-300">
+    <!-- Theme Toggle -->
+    <button id="themeToggle" class="fixed top-4 right-4 z-50 p-3 bg-white dark:bg-dark-800 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-dark-600">
+        <i class="fas fa-moon text-gray-600 dark:text-gray-300 dark:hidden"></i>
+        <i class="fas fa-sun text-yellow-500 hidden dark:block"></i>
+    </button>
+
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <div class="w-80 bg-white dark:bg-dark-800 shadow-xl border-r border-gray-200 dark:border-dark-700 flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200 dark:border-dark-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-brain text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">QueryMind</h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">SQL-RAG Dashboard</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="p-6 border-b border-gray-200 dark:border-dark-700">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Datenbankstatus</span>
+                    <div class="flex items-center space-x-2">
+                        <div id="connectionIndicator" class="w-3 h-3 rounded-full bg-gray-400 status-indicator status-disconnected"></div>
+                        <span id="connectionText" class="text-xs text-gray-500 dark:text-gray-400">Nicht verbunden</span>
+                    </div>
+                </div>
+                
+                <!-- Connection Form -->
+                <form id="connectionForm" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="host" value="localhost" placeholder="Host" class="px-3 py-2 text-sm border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                        <input type="number" id="port" value="5432" placeholder="Port" class="px-3 py-2 text-sm border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    </div>
+                    <input type="text" id="database" placeholder="Database" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <input type="text" id="username" placeholder="Username" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <input type="password" id="password" placeholder="Password" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <button type="submit" id="connectBtn" class="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                        <i class="fas fa-plug mr-2"></i>Verbinden
+                    </button>
+                </form>
+            </div>
+
+            <!-- Schema Info -->
+            <div id="schemaSection" class="p-6 flex-1 overflow-y-auto custom-scrollbar hidden">
+                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Tabellen</h3>
+                <div id="tablesList" class="space-y-2"></div>
+            </div>
+
+            <!-- API Key Section -->
+            <div class="p-6 border-t border-gray-200 dark:border-dark-700">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-key mr-1"></i>OpenAI API Key
+                </label>
+                <div class="relative">
+                    <input type="password" id="apiKey" placeholder="sk-..." class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-10">
+                    <button type="button" id="toggleApiKey" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Optional - wird nur für Anfragen verwendet</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Bar -->
+            <div class="bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-700 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">SQL Query Interface</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Stelle deine Fragen in natürlicher Sprache</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div id="queryStats" class="hidden text-sm text-gray-500 dark:text-gray-400">
+                            <span id="totalQueries">0</span> Anfragen • 
+                            <span id="avgTime">0ms</span> Ø Zeit
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Query Interface -->
+            <div class="flex-1 p-6 overflow-y-auto custom-scrollbar">
+                <div class="max-w-4xl mx-auto">
+                    <!-- Query Input -->
+                    <div class="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-6 mb-6">
+                        <form id="queryForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-question-circle mr-1"></i>Deine Frage
+                                </label>
+                                <textarea 
+                                    id="questionInput" 
+                                    rows="3" 
+                                    placeholder="z.B. Zeige mir alle Produkte mit einem Preis über 100 Euro..."
+                                    class="w-full px-4 py-3 border border-gray-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                                ></textarea>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="includeExplanation" checked class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Erklärung anzeigen</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="includeSQL" checked class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">SQL-Code zeigen</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center space-x-3">
+                                    <button type="button" id="clearBtn" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm font-medium">
+                                        <i class="fas fa-eraser mr-1"></i>Löschen
+                                    </button>
+                                    <button type="submit" id="queryBtn" disabled class="px-6 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center">
+                                        <i class="fas fa-paper-plane mr-2"></i>Frage senden
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Quick Examples -->
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-dark-700">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Beispiele:</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button class="example-btn text-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                                    Zeige alle Produkte
+                                </button>
+                                <button class="example-btn text-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                                    Anzahl der Einträge
+                                </button>
+                                <button class="example-btn text-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                                    Durchschnittlicher Preis
+                                </button>
+                                <button class="example-btn text-xs bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-3 py-1 rounded-full hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                                    Top 5 teuerste Produkte
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="resultsContainer" class="hidden animate-slide-up">
+                        <!-- Loading State -->
+                        <div id="loadingState" class="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 p-8 mb-6 text-center hidden">
+                            <div class="flex flex-col items-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent mb-4"></div>
+                                <p class="text-gray-600 dark:text-gray-400 typing-animation">Generiere SQL-Anfrage</p>
+                            </div>
+                        </div>
+
+                        <!-- Error State -->
+                        <div id="errorState" class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-xl p-4 mb-6 hidden">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-3 mt-0.5"></i>
+                                <div>
+                                    <h4 class="text-red-800 dark:text-red-200 font-medium">Fehler</h4>
+                                    <p id="errorMessage" class="text-red-700 dark:text-red-300 text-sm mt-1"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Explanation -->
+                        <div id="explanationCard" class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-xl p-4 mb-6 hidden">
+                            <div class="flex items-start">
+                                <i class="fas fa-lightbulb text-blue-500 mr-3 mt-0.5"></i>
+                                <div>
+                                    <h4 class="text-blue-800 dark:text-blue-200 font-medium">Erklärung</h4>
+                                    <p id="explanationText" class="text-blue-700 dark:text-blue-300 text-sm mt-1"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SQL Code -->
+                        <div id="sqlCard" class="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 mb-6 hidden">
+                            <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-700">
+                                <h4 class="text-gray-900 dark:text-gray-100 font-medium flex items-center">
+                                    <i class="fas fa-code mr-2"></i>Generiertes SQL
+                                </h4>
+                                <button id="copySqlBtn" class="text-primary-600 hover:text-primary-700 text-sm flex items-center">
+                                    <i class="fas fa-copy mr-1"></i>Kopieren
+                                </button>
+                            </div>
+                            <div class="p-4">
+                                <pre id="sqlCode" class="bg-gray-900 dark:bg-dark-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto custom-scrollbar"></pre>
+                            </div>
+                        </div>
+
+                        <!-- Results Table -->
+                        <div id="resultsTable" class="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700 hidden">
+                            <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-700">
+                                <h4 class="text-gray-900 dark:text-gray-100 font-medium flex items-center">
+                                    <i class="fas fa-table mr-2"></i>Ergebnisse
+                                </h4>
+                                <div class="flex items-center space-x-4">
+                                    <span id="resultStats" class="text-sm text-gray-500 dark:text-gray-400"></span>
+                                    <span id="executionTime" class="text-sm text-gray-500 dark:text-gray-400"></span>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto custom-scrollbar">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-dark-700 table-hover">
+                                    <thead id="tableHead" class="bg-gray-50 dark:bg-dark-700"></thead>
+                                    <tbody id="tableBody" class="bg-white dark:bg-dark-800 divide-y divide-gray-200 dark:divide-dark-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Query History -->
+                    <div id="historySection" class="hidden">
+                        <div class="bg-white dark:bg-dark-800 rounded-xl shadow-sm border border-gray-200 dark:border-dark-700">
+                            <div class="p-4 border-b border-gray-200 dark:border-dark-700">
+                                <h4 class="text-gray-900 dark:text-gray-100 font-medium flex items-center">
+                                    <i class="fas fa-history mr-2"></i>Verlauf
+                                </h4>
+                            </div>
+                            <div id="historyList" class="p-4 space-y-3 max-h-96 overflow-y-auto custom-scrollbar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const API_URL = 'http://localhost:8000/api/v1';
+        
+        // State
+        let isConnected = false;
+        let connectionConfig = {};
+        let queryHistory = [];
+        let queryStats = { total: 0, totalTime: 0 };
+
+        // DOM Elements
+        const themeToggle = document.getElementById('themeToggle');
+        const connectionForm = document.getElementById('connectionForm');
+        const queryForm = document.getElementById('queryForm');
+        const connectionIndicator = document.getElementById('connectionIndicator');
+        const connectionText = document.getElementById('connectionText');
+        const schemaSection = document.getElementById('schemaSection');
+        const tablesList = document.getElementById('tablesList');
+        const questionInput = document.getElementById('questionInput');
+        const queryBtn = document.getElementById('queryBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const loadingState = document.getElementById('loadingState');
+        const errorState = document.getElementById('errorState');
+        const explanationCard = document.getElementById('explanationCard');
+        const sqlCard = document.getElementById('sqlCard');
+        const resultsTable = document.getElementById('resultsTable');
+        const historySection = document.getElementById('historySection');
+
+        // Theme Management
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (saved === 'dark' || (!saved && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        // API Key Toggle
+        document.getElementById('toggleApiKey').addEventListener('click', function() {
+            const input = document.getElementById('apiKey');
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        });
+
+        // Connection Form
+        connectionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const connectBtn = document.getElementById('connectBtn');
+            connectBtn.disabled = true;
+            connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verbinde...';
+            
+            connectionConfig = {
+                db_type: 'postgresql',
+                host: document.getElementById('host').value,
+                port: parseInt(document.getElementById('port').value),
+                database: document.getElementById('database').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/connection/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ connection: connectionConfig })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    isConnected = true;
+                    updateConnectionStatus(true, 'Verbunden');
+                    queryBtn.disabled = false;
+                    await fetchSchema();
+                } else {
+                    isConnected = false;
+                    updateConnectionStatus(false, data.message || 'Verbindung fehlgeschlagen');
+                    queryBtn.disabled = true;
+                }
+            } catch (error) {
+                isConnected = false;
+                updateConnectionStatus(false, 'Verbindungsfehler');
+                queryBtn.disabled = true;
+            }
+            
+            connectBtn.disabled = false;
+            connectBtn.innerHTML = '<i class="fas fa-plug mr-2"></i>Verbinden';
+        });
+
+        // Update Connection Status
+        function updateConnectionStatus(connected, message) {
+            connectionIndicator.className = `w-3 h-3 rounded-full status-indicator ${connected ? 'bg-green-500 status-connected' : 'bg-red-500 status-disconnected'}`;
+            connectionText.textContent = message;
+        }
+
+        // Fetch Schema
+        async function fetchSchema() {
+            try {
+                const response = await fetch(`${API_URL}/schema/extract`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(connectionConfig)
+                });
+                
+                const schema = await response.json();
+                
+                if (schema.tables && schema.tables.length > 0) {
+                    schemaSection.classList.remove('hidden');
+                    tablesList.innerHTML = schema.tables.map(table => `
+                        <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-dark-700 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-table text-primary-500 mr-2"></i>
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">${table.name}</span>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">${table.columns.length} Spalten</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Schema fetch error:', error);
+            }
+        }
+
+        // Query Form
+        queryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const question = questionInput.value.trim();
+            if (!question || !isConnected) return;
+            
+            // Show loading state
+            showResults();
+            showLoading('Generiere SQL-Anfrage...');
+            
+            queryBtn.disabled = true;
+            queryBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verarbeite...';
+            
+            const startTime = Date.now();
+            
+            try {
+                const apiKey = document.getElementById('apiKey').value.trim();
+                const includeExplanation = document.getElementById('includeExplanation').checked;
+                const includeSQL = document.getElementById('includeSQL').checked;
+                
+                const response = await fetch(`${API_URL}/query/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        connection: connectionConfig,
+                        question: question,
+                        api_key: apiKey || null,
+                        include_sql: includeSQL,
+                        include_explanation: includeExplanation,
+                        max_rows: 100
+                    })
+                });
+                
+                const data = await response.json();
+                const executionTime = Date.now() - startTime;
+                
+                hideLoading();
+                
+                if (data.success) {
+                    displayResults(data, executionTime);
+                    addToHistory(question, data.generated_sql, data.success);
+                    updateQueryStats(executionTime);
+                } else {
+                    showError(data.error || 'Ein Fehler ist aufgetreten');
+                }
+            } catch (error) {
+                hideLoading();
+                showError('Netzwerkfehler: ' + error.message);
+            }
+            
+            queryBtn.disabled = false;
+            queryBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Frage senden';
+        });
+
+        // Display Results
+        function displayResults(data, executionTime) {
+            // Execution time
+            if (data.execution_time_ms) {
+                document.getElementById('executionTime').textContent = `${data.execution_time_ms.toFixed(2)}ms`;
+            }
+            
+            // Explanation
+            if (data.explanation) {
+                explanationCard.classList.remove('hidden');
+                document.getElementById('explanationText').textContent = data.explanation;
+            } else {
+                explanationCard.classList.add('hidden');
+            }
+            
+            // SQL Code
+            if (data.generated_sql) {
+                sqlCard.classList.remove('hidden');
+                document.getElementById('sqlCode').textContent = data.generated_sql;
+            } else {
+                sqlCard.classList.add('hidden');
+            }
+            
+            // Results Table
+            if (data.result && data.result.rows.length > 0) {
+                displayTable(data.result);
+            } else {
+                resultsTable.classList.add('hidden');
+                if (!data.explanation) {
+                    showError('Keine Ergebnisse gefunden');
+                }
+            }
+        }
+
+        // Display Table
+        function displayTable(result) {
+            resultsTable.classList.remove('hidden');
+            
+            // Stats
+            document.getElementById('resultStats').textContent = 
+                `${result.row_count} ${result.row_count === 1 ? 'Zeile' : 'Zeilen'}${result.truncated ? ' (gekürzt)' : ''}`;
+            
+            // Header
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = `<tr>${result.columns.map(col => 
+                `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${col}</th>`
+            ).join('')}</tr>`;
+            
+            // Body
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = result.rows.map(row => 
+                `<tr>${row.map(cell => 
+                    `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${
+                        cell !== null ? escapeHtml(cell) : '<span class="text-gray-400 italic">NULL</span>'
+                    }</td>`
+                ).join('')}</tr>`
+            ).join('');
+        }
+
+        // Utility Functions
+        function showResults() {
+            resultsContainer.classList.remove('hidden');
+            hideError();
+        }
+
+        function showLoading(message) {
+            loadingState.classList.remove('hidden');
+            loadingState.querySelector('p').textContent = message;
+            explanationCard.classList.add('hidden');
+            sqlCard.classList.add('hidden');
+            resultsTable.classList.add('hidden');
+        }
+
+        function hideLoading() {
+            loadingState.classList.add('hidden');
+        }
+
+        function showError(message) {
+            errorState.classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = message;
+            explanationCard.classList.add('hidden');
+            sqlCard.classList.add('hidden');
+            resultsTable.classList.add('hidden');
+        }
+
+        function hideError() {
+            errorState.classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Query History
+        function addToHistory(question, sql, success) {
+            queryHistory.unshift({ 
+                question, 
+                sql, 
+                success, 
+                timestamp: new Date() 
+            });
+            
+            if (queryHistory.length > 10) queryHistory.pop();
+            updateHistoryDisplay();
+        }
+
+        function updateHistoryDisplay() {
+            if (queryHistory.length > 0) {
+                historySection.classList.remove('hidden');
+                
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = queryHistory.map((item, index) => `
+                    <div class="history-item p-3 bg-gray-50 dark:bg-dark-700 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-600 cursor-pointer transition-colors" data-index="${index}">
+                        <p class="text-sm text-gray-900 dark:text-gray-100 font-medium">${escapeHtml(item.question)}</p>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">${item.timestamp.toLocaleTimeString()}</span>
+                            <span class="text-xs ${item.success ? 'text-green-600' : 'text-red-600'}">
+                                <i class="fas ${item.success ? 'fa-check-circle' : 'fa-times-circle'} mr-1"></i>
+                                ${item.success ? 'Erfolgreich' : 'Fehler'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Add click handlers
+                document.querySelectorAll('.history-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const index = parseInt(item.dataset.index);
+                        questionInput.value = queryHistory[index].question;
+                    });
+                });
+            }
+        }
+
+        // Query Stats
+        function updateQueryStats(executionTime) {
+            queryStats.total++;
+            queryStats.totalTime += executionTime;
+            
+            document.getElementById('queryStats').classList.remove('hidden');
+            document.getElementById('totalQueries').textContent = queryStats.total;
+            document.getElementById('avgTime').textContent = Math.round(queryStats.totalTime / queryStats.total) + 'ms';
+        }
+
+        // Example Questions
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                questionInput.value = btn.textContent;
+            });
+        });
+
+        // Clear Button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            questionInput.value = '';
+            resultsContainer.classList.add('hidden');
+        });
+
+        // Copy SQL Button
+        document.getElementById('copySqlBtn').addEventListener('click', async () => {
+            const sql = document.getElementById('sqlCode').textContent;
+            try {
+                await navigator.clipboard.writeText(sql);
+                const btn = document.getElementById('copySqlBtn');
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i>Kopiert!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy mr-1"></i>Kopieren';
+                }, 2000);
+            } catch (err) {
+                console.error('Copy failed:', err);
+            }
+        });
+
+        // Enable query button when question is typed
+        questionInput.addEventListener('input', () => {
+            queryBtn.disabled = !questionInput.value.trim() || !isConnected;
+        });
+
+        // Initialize
+        initTheme();
+    </script>
+</body>
+</html>
