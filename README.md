@@ -17,9 +17,6 @@
   <img src="https://img.shields.io/badge/Azure-Deployed-0078d4?style=flat-square&logo=microsoft-azure&logoColor=white" alt="Azure"/>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License"/>
-  <img src="https://img.shields.io/badge/Status-Production-brightgreen?style=flat-square" alt="Status"/>
 </p>
 
 ---
@@ -41,7 +38,7 @@
 | ⚡ **Real-time Execution** | Generates and runs optimized SQL queries instantly |
 | 📊 **Smart Responses** | Returns both raw data and natural language explanations |
 | 🔐 **Secure by Design** | Read-only queries, no destructive operations allowed |
-| 🌙 **Dark/Light Theme** | Beautiful, modern UI with theme toggle |
+| 🌙 **Dark/Light Theme** | Modern UI with theme toggle |
 | 🔑 **BYOK (Bring Your Own Key)** | Use your own OpenAI API key |
 | 🐳 **Docker Ready** | One-command deployment with Docker Compose |
 | ☁️ **Azure Deployed** | Production-ready on Azure Container Apps |
@@ -88,7 +85,7 @@
 **Frontend:**
 - 🎨 Modern single-page dashboard
 - 💨 Tailwind CSS for styling
-- 🌙 Dark/Light theme support
+- 🌙 Dark theme
 - 📱 Fully responsive design
 
 **Infrastructure:**
@@ -193,7 +190,6 @@ Simply type your question in natural language:
 
 ## 🔒 Security
 
-QueryMind is built with security as a priority:
 
 | Security Feature | Description |
 |-----------------|-------------|
@@ -299,17 +295,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [OpenAI](https://openai.com) for the GPT models
-- [FastAPI](https://fastapi.tiangolo.com) for the amazing framework
-- [Tailwind CSS](https://tailwindcss.com) for the styling
 
 ---
 
