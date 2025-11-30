@@ -294,6 +294,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 5. Open a Pull Request
 
 ---
+Additional Ideas:
+
+ Data Visualization & Analysis:
+
+    Diagram Generation (user's idea)
+    Interactive Charts (bar, pie, line)
+    Export to PDF/Excel
+
+ AI & LLM Enhancements:
+
+    Query Suggestions
+    Multi-LLM Support (Claude, Gemini, Ollama)
+    Query Optimization Tips
+    Natural Language Explanations
 
 
 ---
